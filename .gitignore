@@ -1,0 +1,7 @@
+node_modules/
+playwright-report/
+blob-report/
+test-results/
+performance/k6-summary.json
+.env
+.DS_Store

@@ -1,0 +1,37 @@
+{
+  "name": "playwright-ts-quality-suite",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Full-stack quality suite in TypeScript: Playwright UI + API tests, Zod contract validation, axe accessibility checks and k6 performance tests against OWASP Juice Shop running in Docker.",
+  "author": "Matias Galvez",
+  "license": "MIT",
+  "scripts": {
+    "app:up": "docker compose up -d && npm run app:wait",
+    "app:down": "docker compose down",
+    "app:wait": "node scripts/wait-for-app.mjs",
+    "test": "playwright test",
+    "test:api": "playwright test --project=api",
+    "test:ui": "playwright test --project=chromium",
+    "test:smoke": "playwright test --grep @smoke",
+    "test:a11y": "playwright test --project=a11y",
+    "test:security": "playwright test --grep @security",
+    "perf:smoke": "docker run --rm --add-host=host.docker.internal:host-gateway -e BASE_URL=${K6_BASE_URL:-http://host.docker.internal:3000} -v \"$PWD/performance:/scripts\" grafana/k6:1.8.2 run /scripts/smoke.js",
+    "perf:load": "docker run --rm --add-host=host.docker.internal:host-gateway -e BASE_URL=${K6_BASE_URL:-http://host.docker.internal:3000} -v \"$PWD/performance:/scripts\" grafana/k6:1.8.2 run /scripts/load.js",
+    "report": "playwright show-report",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "@eslint/js": "9.15.0",
+    "@playwright/test": "1.64.1",
+    "@types/node": "22.9.0",
+    "eslint": "9.15.0",
+    "typescript": "5.6.3",
+    "typescript-eslint": "8.15.0",
+    "zod": "3.23.8"
+  },
+  "overrides": {
+    "playwright-core": "1.64.1"
+  }
+}

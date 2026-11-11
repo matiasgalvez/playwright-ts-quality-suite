@@ -1,0 +1,153 @@
+name: Quality Suite
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 7 * * 1-5' # nightly regression, weekdays 07:00 UTC
+  workflow_dispatch:
+    inputs:
+      load_test:
+        description: Run the k6 load test (≈3 min)
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+  BASE_URL: http://localhost:3000
+  JUICE_SHOP_IMAGE: bkimminich/juice-shop:v20.3.0
+
+jobs:
+  static:
+    name: Lint & typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+
+  tests:
+    name: ${{ matrix.suite }}
+    needs: static
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # Every event runs API, Chromium, mobile smoke and a11y. Firefox/WebKit join on main and nightly.
+        suite: ${{ github.event_name == 'pull_request' && fromJSON('["api","chromium","mobile-chrome","a11y"]') || fromJSON('["api","chromium","firefox","webkit","mobile-chrome","a11y"]') }}
+    services:
+      juice-shop:
+        image: bkimminich/juice-shop:v20.3.0
+        ports: ['3000:3000']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Install browser
+        if: matrix.suite != 'api'
+        run: |
+          case "${{ matrix.suite }}" in
+            firefox) npx playwright install --with-deps firefox ;;
+            webkit)  npx playwright install --with-deps webkit ;;
+            *)       npx playwright install --with-deps chromium ;;
+          esac
+      - name: Wait for Juice Shop
+        run: npm run app:wait
+      - name: Run ${{ matrix.suite }} tests
+        run: npx playwright test --project=${{ matrix.suite }}
+        env:
+          REPORT_ID: ${{ matrix.suite }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: blob-report-${{ matrix.suite }}
+          path: blob-report/
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: junit-${{ matrix.suite }}
+          path: test-results/junit.xml
+          retention-days: 7
+
+  performance:
+    name: k6 ${{ (github.event_name == 'schedule' || inputs.load_test) && 'load' || 'smoke' }}
+    needs: static
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      juice-shop:
+        image: bkimminich/juice-shop:v20.3.0
+        ports: ['3000:3000']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Wait for Juice Shop
+        run: node scripts/wait-for-app.mjs
+      - name: Run k6 (thresholds fail the job)
+        run: |
+          SCRIPT=${{ (github.event_name == 'schedule' || inputs.load_test) && 'load.js' || 'smoke.js' }}
+          docker run --rm --network host -e BASE_URL=$BASE_URL \
+            -v "$PWD/performance:/scripts" grafana/k6:1.8.2 \
+            run --summary-export=/scripts/k6-summary.json /scripts/$SCRIPT
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: k6-summary
+          path: performance/k6-summary.json
+          retention-days: 30
+
+  report:
+    name: Publish HTML report
+    needs: tests
+    if: always() && needs.tests.result != 'skipped'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: blob-report-*
+          path: all-blob-reports
+          merge-multiple: true
+      - name: Merge reports from every suite
+        run: npx playwright merge-reports --reporter html ./all-blob-reports
+      - uses: actions/upload-artifact@v4
+        with:
+          name: playwright-html-report
+          path: playwright-report/
+          retention-days: 14
+      - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        with:
+          path: playwright-report/
+
+  deploy-report:
+    name: Deploy report to GitHub Pages
+    needs: report
+    if: always() && needs.report.result == 'success' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
