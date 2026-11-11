@@ -11,7 +11,7 @@ import baseline from './a11y-baseline.json';
  * The full axe report is attached to every run.
  */
 const pages: { name: keyof typeof baseline; path: string; ready: string }[] = [
-  { name: 'search', path: '/#/search', ready: '.item-name' },
+  { name: 'search', path: '/#/search', ready: 'app-product .name' },
   { name: 'login', path: '/#/login', ready: '#loginButton' },
   { name: 'register', path: '/#/register', ready: '#registerButton' },
 ];

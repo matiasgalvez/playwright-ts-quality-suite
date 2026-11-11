@@ -11,8 +11,8 @@ test.describe('Product search', () => {
 
     await expect(page).toHaveURL(/#\/search\?q=apple/);
     await expect(searchPage.searchValue).toHaveText('apple');
-    await expect(searchPage.productNames.filter({ hasText: products.appleJuice })).toBeVisible();
-    await expect(searchPage.productNames.filter({ hasText: products.applePomace })).toBeVisible();
+    await expect(searchPage.productName(products.appleJuice)).toBeVisible();
+    await expect(searchPage.productName(products.applePomace)).toBeVisible();
   });
 
   test('every product the API finds is shown in the UI', async ({ nav, searchPage, api }) => {
@@ -24,7 +24,7 @@ test.describe('Product search', () => {
     await nav.search('apple');
 
     for (const name of expected) {
-      await expect(searchPage.productNames.filter({ hasText: name }), name).toBeVisible();
+      await expect(searchPage.productName(name), name).toBeVisible();
     }
   });
 

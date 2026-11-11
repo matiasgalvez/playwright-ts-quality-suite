@@ -1,5 +1,5 @@
 {
-  "search": [],
-  "login": [],
-  "register": []
+  "search": ["color-contrast", "label", "label-content-name-mismatch"],
+  "login": ["label", "label-content-name-mismatch"],
+  "register": ["label", "label-content-name-mismatch"]
 }

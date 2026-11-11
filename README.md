@@ -16,7 +16,7 @@ It is built the way I would set up quality for a product team: most coverage at 
 | **API testing** | Typed API client, positive + negative + auth cases, contract validation with **Zod** |
 | **UI testing** | Playwright + Page Object Model on Chromium, Firefox, WebKit and a mobile viewport |
 | **UI ↔ API cross-checks** | UI actions verified in the backend, API-created data verified in the UI |
-| **Security regression** | 6 real vulnerabilities (SQLi, IDOR, mass assignment, hash leak, XSS, stack-trace leak) tracked as expected failures |
+| **Security regression** | 5 real vulnerabilities (SQLi, IDOR, mass assignment, password hash leak, XSS) tracked as expected failures |
 | **Accessibility** | axe-core WCAG 2.1 AA scans with a "ratchet" baseline that blocks new violations |
 | **Performance** | **k6** smoke and load tests with p95 / p99 / error-rate thresholds |
 | **CI/CD** | GitHub Actions: PR gate, full regression on `main`, nightly load test, merged report on GitHub Pages |
@@ -33,7 +33,7 @@ The suite found these defects in the application under test. Each one is documen
 | SEC-03 | High | Any user can read any other user's basket (IDOR) |
 | SEC-04 | High | `whoami?fields=password` returns the password hash |
 | SEC-05 | High | Reflected XSS through the search term |
-| SEC-06 | Medium | Malformed requests return Node.js stack traces |
+| A11Y-01–03 | Critical / Serious | Unlabeled search input, accessible names that don't match visible text, low-contrast "Only 1 left" ribbon |
 
 ## Project structure
 

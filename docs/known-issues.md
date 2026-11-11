@@ -15,7 +15,6 @@ Each one has a test that asserts the **correct** behavior and is marked `test.fa
 | SEC-03 | High | Basket | `tests/api/security.spec.ts` |
 | SEC-04 | High | User profile | `tests/api/security.spec.ts` |
 | SEC-05 | High | Search UI | `tests/ui/search.spec.ts` |
-| SEC-06 | Medium | Error handling | `tests/api/security.spec.ts` |
 
 ---
 
@@ -51,17 +50,19 @@ Each one has a test that asserts the **correct** behavior and is marked `test.fa
 **Actual:** the term is rendered as HTML (bold text). The frontend binds it with `bypassSecurityTrustHtml`.
 **Impact:** Script injection through a crafted search link.
 
-### SEC-06 — Unhandled errors return stack traces
-**Request:** `POST /rest/user/login` with `Content-Type: application/json` and a truncated body `{"email": `
-**Expected:** a clean `400 Bad Request` with a generic message.
-**Actual:** the response contains the Node.js stack trace, including internal file paths.
-**Impact:** Information disclosure that helps attackers map the code base.
-**Root cause:** Express `errorhandler` (a development-only middleware) is enabled, and JSON parsing errors are not handled.
 
 ---
 
 ## Accessibility baseline
 
-`tests/a11y/a11y-baseline.json` lists axe rule ids that already fail on each page. The accessibility tests only fail on **new** violations, so accessibility can only improve ("ratchet"). When a baseline rule stops failing, the test adds an `a11y-fixed` annotation saying it can be removed from the baseline.
+`tests/a11y/a11y-baseline.json` lists axe rule ids that already fail on each page (WCAG 2.1 AA, axe-core 4.14, found on the first run):
+
+| ID | Impact | Rule | Pages | Element |
+|---|---|---|---|---|
+| A11Y-01 | Critical | `label` | all | Navbar search `<input>` has no label |
+| A11Y-02 | Serious | `label-content-name-mismatch` | all | Home, basket and language buttons: visible text is not part of the accessible name (breaks voice control, e.g. "click Your Basket") |
+| A11Y-03 | Serious | `color-contrast` | search | "Only 1 left" ribbon text: 2.86:1, needs 4.5:1 |
+
+`tests/a11y/a11y-baseline.json` holds these rule ids. The accessibility tests only fail on **new** violations, so accessibility can only improve ("ratchet"). When a baseline rule stops failing, the test adds an `a11y-fixed` annotation saying it can be removed from the baseline.
 
 Full axe results for every page are attached to each test in the HTML report.

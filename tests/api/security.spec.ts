@@ -52,9 +52,7 @@ test.describe('Security regression checks @security', () => {
     expect((await res.json()).user).not.toHaveProperty('password');
   });
 
-  test('SEC-06 error responses do not leak stack traces @api', async ({ request }) => {
-    test.fail(true, 'SEC-06: development error handler is enabled in production mode (docs/known-issues.md)');
-
+  test('error responses do not leak stack traces @api', async ({ request }) => {
     // Malformed JSON body: the server should answer with a clean 4xx, not internals.
     const res = await request.post('/rest/user/login', {
       headers: { 'Content-Type': 'application/json' },

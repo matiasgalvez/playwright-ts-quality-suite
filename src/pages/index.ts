@@ -40,7 +40,7 @@ export class SearchResultsPage {
   constructor(private readonly page: Page) {
     this.searchValue = page.locator('#searchValue');
     this.productNames = page.locator('app-product .name');
-    this.noResults = page.locator('.noResultText');
+    this.noResults = page.getByText('No results found');
   }
 
   async open() {
@@ -48,8 +48,13 @@ export class SearchResultsPage {
     await expect(this.productNames.first()).toBeVisible();
   }
 
+  /** Exact match: `hasText` alone is a case-insensitive substring ("Apple Juice" would also match "Pineapple Juice"). */
+  productName(name: string): Locator {
+    return this.productNames.filter({ hasText: exact(name) });
+  }
+
   productCard(name: string): Locator {
-    return this.page.locator('app-product').filter({ has: this.page.locator('.name', { hasText: name }) });
+    return this.page.locator('app-product').filter({ has: this.page.locator('.name', { hasText: exact(name) }) });
   }
 
   async addToBasket(name: string) {
@@ -59,6 +64,10 @@ export class SearchResultsPage {
   snackbar(): Locator {
     return this.page.locator('simple-snack-bar, .mat-mdc-snack-bar-label').first();
   }
+}
+
+function exact(text: string): RegExp {
+  return new RegExp(`^\\s*${text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`);
 }
 
 export class LoginPage {
