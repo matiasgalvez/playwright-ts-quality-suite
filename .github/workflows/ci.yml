@@ -100,7 +100,7 @@ jobs:
       - name: Run k6 (thresholds fail the job)
         run: |
           SCRIPT=${{ (github.event_name == 'schedule' || inputs.load_test) && 'load.js' || 'smoke.js' }}
-          docker run --rm --network host -e BASE_URL=$BASE_URL \
+          docker run --rm --network host --user "$(id -u):$(id -g)" -e BASE_URL=$BASE_URL \
             -v "$PWD/performance:/scripts" grafana/k6:1.8.2 \
             run --summary-export=/scripts/k6-summary.json /scripts/$SCRIPT
       - uses: actions/upload-artifact@v4
