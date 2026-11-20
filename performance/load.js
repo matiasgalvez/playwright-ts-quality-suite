@@ -5,8 +5,9 @@
 // Each VU logs in as its own shopper with its own basket, and every iteration removes
 // the item it added. Sharing one basket made concurrent VUs add the same product twice,
 // which hits Juice Shop's (BasketId, ProductId) unique constraint and returns 500.
+// Shoppers only add in-stock products: adding a sold-out one is a correct 400, not load.
 import http from 'k6/http';
-import { check, group, sleep } from 'k6';
+import { check, fail, group, sleep } from 'k6';
 import { registerAndLogin, BASE } from './lib.js';
 
 const TERMS = ['juice', 'apple', 'banana', 'owasp', 'lemon', 't-shirt'];
@@ -36,7 +37,16 @@ export const options = {
 
 let session; // one shopper per VU, created on its first iteration
 
-export default function () {
+/** Reads stock once, the same public endpoint the storefront uses for "Sold Out" ribbons. */
+export function setup() {
+  const res = http.get(`${BASE}/api/Quantitys`, { tags: { name: 'stock' } });
+  check(res, { 'setup: stock 200': (r) => r.status === 200 });
+  const inStock = (res.json('data') || []).filter((q) => q.quantity > 0).map((q) => q.ProductId);
+  if (!inStock.length) fail('no products in stock');
+  return { inStock };
+}
+
+export default function ({ inStock }) {
   if (!session) session = registerAndLogin(`vu${__VU}`);
   const auth = { Authorization: `Bearer ${session.token}`, 'Content-Type': 'application/json' };
   let productId;
@@ -46,8 +56,8 @@ export default function () {
     const term = TERMS[Math.floor(Math.random() * TERMS.length)];
     const res = http.get(`${BASE}/rest/products/search?q=${encodeURIComponent(term)}`, { tags: { name: 'search' } });
     check(res, { 'search 200': (r) => r.status === 200 });
-    const data = res.json('data') || [];
-    if (data.length) productId = data[Math.floor(Math.random() * data.length)].id;
+    const available = (res.json('data') || []).filter((p) => inStock.includes(p.id));
+    if (available.length) productId = available[Math.floor(Math.random() * available.length)].id;
   });
 
   sleep(Math.random() * 2 + 1); // think time
